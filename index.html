@@ -35,13 +35,9 @@
 	L.mapbox.accessToken = 'pk.eyJ1IjoiaHFpbiIsImEiOiJjaW81cnhueGwwMjJ6dmdrcWI5ejhldWJpIn0.izzZYlhhXS2ZAyXXIGd2BA';
 	var map = L.mapbox.map('map', 'mapbox.streets')
 		.setView([38, -77], 12);
-	//map.scrollWheelZoom.disable();
- 
-	//var myLayer = L.mapbox.featureLayer().addTo(map);
-	//myLayer.setGeoJSON(reports);
 	var within, poly_fc;
 	var hull;
-	// Add marker color, symbol, and size to hospital GeoJSON
+
 	for(var i = 0; i < reports.features.length; i++) {
 	  var status = reports.features[i].properties['status'];
 	  if (status == "1"){
@@ -73,20 +69,16 @@
     .addTo(map);
 	var obstaclesLayer = L.mapbox.featureLayer(obstacles)
     .addTo(map);
-	// Find and store a variable reference to the list of filters.
 	var filters = document.getElementById('filters');
 	var legendtitle = filters.appendChild(document.createElement('div'));
 	legendtitle.style='width: 50%;margin: 0 auto;font-size:21px';
 	var title = legendtitle.appendChild(document.createElement('span'));
 	title.innerHTML = "Legend";
-	//var hull = turf.concave(map.featureLayer.getGeoJSON(), 3, 'miles');
-    //L.mapbox.featureLayer(hull).addTo(map);
-	// When map loads, zoom to libraryLayer features
+
 	map.fitBounds(obstaclesLayer.getBounds());
 	
-	//draw functions
+	//draw and then generate convex/concave hull dynamically
 	var featureGroup = L.featureGroup();
-	  
 	var drawControl = new L.Control.Draw({
 		draw: {
 		  polyline: false,
@@ -118,9 +110,6 @@
     });
 	
 	map.on('ready', function() {
-	  // Collect the types of symbols in this layer. you can also just
-	  // hardcode an array of types if you know what you want to filter on,
-	  // like var types = ['foo', 'bar'];
 	  var typesObj = {}, types=["obstacle"];
 	  //var types = ['Under review','Confirmed','Closed','Official'];
 	  var features = reportsLayer.getGeoJSON().features;
@@ -140,7 +129,6 @@
 		checkbox.type = 'checkbox';
 		checkbox.id = types[i];
 		checkbox.checked = true;
-		// create a label to the right of the checkbox with explanatory text
 		if(types[i] == "1"){
 			label.innerHTML = " under review";
 			icon.src = "icon/under.png";
@@ -183,21 +171,11 @@
 			  if (checkboxes[i].checked) enabled[checkboxes[i].id] = true;
 			}		
 			reportsLayer.setFilter(function(feature) {
-			  // If this symbol is in the list, return true. if not, return false.
-			  // The 'in' operator in javascript does exactly that: given a string
-			  // or number, it says if that is in a object.
-			  // 2 in { 2: true } // true
-			  // 2 in { } // false
 			  return (feature.properties['status'] in enabled);
 			});	
 		}
 	  }
 	  $("#5").click();
-	  
-	  //concave hull
-	  //var hull = turf.convex(obstaclesLayer.getGeoJSON());
-	  //L.mapbox.featureLayer(hull).addTo(map);
-	  
 	});
   </script>
 </body>
