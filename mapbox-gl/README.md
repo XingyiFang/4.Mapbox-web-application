@@ -1,2 +1,2 @@
 #simple web application with mapbox-gl.js
-no databases, but still use Ajax/PHP to store the data into geojson format.
+no databases, but still need to use Ajax/PHP to store the data in geojson format.
