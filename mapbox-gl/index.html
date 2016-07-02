@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title></title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.20.1/mapbox-gl.js'></script>
+	<script src='campus.js'></script>
+	<script src='markers.js'></script>
+	<script src='stairs.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.20.1/mapbox-gl.css' rel='stylesheet' />
+	<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+    </style>
+</head>
+<body>
+<style>
+	body { margin:0; padding:0; font-family:"Avenir LT W01 35 Light", Arial, Helvetica, sans-serif}
+	#map { position:absolute; top:0; bottom:0; width:100%; }
+	.legend {
+		background-color: #fff;
+		border-radius: 3px;
+		top: 10px;
+		box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+		font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+		padding: 10px;
+		position: absolute;
+		right: 10px;
+		z-index: 1;
+	}
+
+	.legend h4 {
+		margin: 0 0 10px;
+	}
+
+	.legend div span {
+		border-radius: 50%;
+		display: inline-block;
+		height: 10px;
+		margin-right: 5px;
+		width: 10px;
+	}
+  </style>
+
+	<div id='county-legend' class='legend' style=''>
+		<div><input type="button" onclick="clickOut()" id="button" value="Add comment"></input></div><br/>
+		<h4>Legend</h4>
+		<div><input type="checkbox" id="markers" value="comments" checked /><span style='background-color: #dd1c77'></span>comments</div>
+		<div><input type="checkbox" id="route" value="accessible" checked /><span style='background-color: #ffff00'></span>sidewalks</div>
+		<div><input type="checkbox" id="stairs" value="steep" checked /><span style='background-color: #feb24c'></span>steep sidewalks and stairs</div>
+	</div>
+
+<div id='map'></div>
+<script>
+var editable =false;
+function clickOut(){
+if($('#button').val()=="Add comment"){
+$('#button').val("editing");editable = true;
+}else{
+$('#button').val("Add comment");editable = false;
+}
+
+};
+
+mapboxgl.accessToken = 'pk.eyJ1IjoiaHFpbiIsImEiOiJjaW81cnhueGwwMjJ6dmdrcWI5ejhldWJpIn0.izzZYlhhXS2ZAyXXIGd2BA';
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/satellite-v9',
+    center: [-77.3067261174554,38.84224075327185],
+    zoom: 14
+});
+// Initialize the FeatureGroup to store editable layers
+
+var geojson = {
+  "type": "FeatureCollection",
+  "features": []
+};
+
+map.on('load', function () {
+	map.addSource('tpoint', {
+        "type": "geojson",
+        "data": geojson
+    });
+	//temp point
+    map.addLayer({
+        "id": "tpoint",
+        "source": "tpoint",
+        "type": "circle",
+        "paint": {
+            "circle-radius": 10,
+            "circle-color": "#007cbf"
+        }
+    });
+	
+	//real markers - will be stored
+	map.addSource('markers', {
+        "type": "geojson",
+        "data": markers
+    });
+
+    map.addLayer({
+        "id": "markers",
+        "source": "markers",
+        "type": "circle",
+        "paint": {
+            "circle-radius": 10,
+            "circle-color": "#dd1c77"
+        }
+    });
+	
+	//network
+    map.addSource("route", {
+        "type": "geojson",
+        "data": campus
+    });
+
+    map.addLayer({
+        "id": "route",
+        "type": "line",
+        "source": "route",
+        "layout": {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+        "paint": {
+            "line-color": "#ffff00",
+            "line-width": 4
+        }
+    });	
+	
+	//steep path network
+	map.addSource("stairs", {
+        "type": "geojson",
+        "data": stairs
+    });
+
+    map.addLayer({
+        "id": "stairs",
+        "type": "line",
+        "source": "stairs",
+        "layout": {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+        "paint": {
+            "line-color": "#feb24c",
+            "line-width": 4
+        }
+    });	
+});
+var id;
+		
+function save(id, lng, lat) {
+	editable = false;
+	$('#button').val("Add comment");
+	
+	//add properties
+	var marker = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        lng,
+                        lat
+                    ]
+                },
+                "properties": {
+                    "id": id,
+					"name":$('#ShapeName').val(),
+					"comment":$('#shapeDesc').val()
+                }
+            };
+
+	markers.features.push(marker);
+	map.getSource('markers').setData(markers);
+	
+	console.log(JSON.stringify(markers));
+	$.ajax({
+		url: 'markers.php',
+		type: 'POST',
+		data: { data: JSON.stringify(markers)},
+		success: function(result) {
+			console.log('the data was successfully sent to the server');
+		}
+	});
+	
+	geojson = {
+	  "type": "FeatureCollection",
+	  "features": []
+	};
+	map.getSource('tpoint').setData(geojson);
+}
+
+map.on('click', function (e) {   
+	if(editable){
+	geojson = {
+	  "type": "FeatureCollection",
+	  "features": []
+	};
+    id = String(new Date().getTime());
+    // Populate the popup and set its coordinates
+    // based on the feature found.
+	var popup = new mapboxgl.Popup();
+	var content = '<span><b>Note</b></span><br/><select id="ShapeName"><option value="missing">missing</option><option value="repair">need repair</option><option value="wide">not wide enough</option><option value="marked">not marked well</option><option value="repair">blocked/obstructed</option></select><br/><br/><span><b>Comment<b/></span><br/><textarea id="shapeDesc" cols="25" rows="5" wrap="hard"></textarea><br/><br/><input type="button" id="okBtn" value="Save" onclick="save('+id+ ','+ e.lngLat.lng+ ','+ e.lngLat.lat+')"/>';
+     popup.setLngLat(e.lngLat);
+     popup.setHTML(content);
+     popup.addTo(map);
+	
+	// Add a marker feature to your geojson object
+	  var point = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        e.lngLat.lng,
+                        e.lngLat.lat
+                    ]
+                },
+                "properties": {
+                    "id": id,
+					"name":$('#ShapeName').val(),
+					"comment":$('#shapeDesc').val()
+                }
+            };
+
+	geojson.features.push(point);
+	map.getSource('tpoint').setData(geojson);
+	
+	}else{
+		
+		var features = map.queryRenderedFeatures(e.point, { layers: ['markers'] });
+
+		if (!features.length) {
+			return;
+		}
+
+		var feature = features[0];
+		var popup = new mapboxgl.Popup()
+			.setLngLat(feature.geometry.coordinates)
+			.setHTML("<span><b>point type:</b></span><br/>"+ feature.properties.name + "<br/><br/><span><b>comment:</b></span><br/><div style='white-space:pre-wrap;max-width: 200px;'><p>"+feature.properties.comment+'</p></div>')
+			.addTo(map);
+	
+	}});
+
+//checkbox
+$('input:checkbox').change(function() {
+        if($(this).is(":checked")) {
+		//add layers
+            //console.log($(this).attr('id'));
+			map.setLayoutProperty($(this).attr('id'), 'visibility', 'visible');
+        }else{
+		//delete layers
+			//console.log($(this).attr('id'));
+			map.setLayoutProperty($(this).attr('id'), 'visibility', 'none');
+		}
+    });
+</script>
+
+</body>
+</html>
